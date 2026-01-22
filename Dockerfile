@@ -1,13 +1,16 @@
-# Use CUDA 12.1 to match llama-cpp-python wheel
+# CUDA 12.1 image (use devel so build tools exist if any wheel falls back to source)
 FROM nvidia/cuda:12.1.1-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    python3.11 \
-    python3.11-dev \
+# (Optional but commonly needed on RunPod) ensure CUDA compat libs are registered
+RUN ldconfig /usr/local/cuda-12.1/compat/ || true
+
+# System deps: python, pip, wget, build tools (safe even if wheels are used)
+RUN apt-get update -y && apt-get install -y \
+    python3 \
+    python3-dev \
     python3-pip \
     wget \
     git \
@@ -15,25 +18,29 @@ RUN apt-get update && apt-get install -y \
     cmake \
  && rm -rf /var/lib/apt/lists/*
 
-# Set Python 3.11 as default
-RUN ln -s /usr/bin/python3.11 /usr/bin/python && \
-    python -m pip install --upgrade pip
+# Upgrade pip
+RUN python3 -m pip install --upgrade pip
 
-# Download the model
-RUN wget -O model.gguf \
-    "https://huggingface.co/cakebut/askvox_api/resolve/main/llama-2-7b-chat.Q4_K_M.gguf?download=true"
+# ---- Model download (same idea as Dockerfile #2) ----
+# If you want a different model, change this URL.
+RUN wget -O /app/model.gguf \
+  "https://huggingface.co/cakebut/askvox_api/resolve/main/llama-2-7b-chat.Q4_K_M.gguf?download=true"
 
-# Install Python dependencies
-RUN pip install --no-cache-dir \
+# ---- Python deps ----
+# Install llama-cpp-python CUDA wheel for cu121 + your API deps
+RUN pip3 install --no-cache-dir \
     fastapi \
     uvicorn[standard] \
     pydantic \
     llama-cpp-python \
     --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu121
 
-# Copy application code
-COPY app.py .
+# Copy app
+COPY app.py /app/app.py
 
-# No need to EXPOSE port — RunPod handles networking
-# Listen on $PORT (set by RunPod at runtime)
-CMD ["python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "7000"]
+# RunPod typically sets PORT, your app.py uses PORT default 5000 anyway
+ENV PORT=5000
+ENV MODEL_PATH=/app/model.gguf
+
+# Start like Dockerfile #1 (works with RunPod)
+CMD ["python3", "app.py"]
