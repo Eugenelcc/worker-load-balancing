@@ -95,19 +95,27 @@ async def generate(req: GenerationRequest):
     out = llm(req.prompt, max_tokens=req.max_tokens, temperature=req.temperature, echo=False)
     return GenerationResponse(generated_text=out["choices"][0]["text"].strip())
 
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import Dict, Any
+
+class InputModel(BaseModel):
+    input: Dict[str, Any]
+
+class ChatResponse(BaseModel):
+    response: str
+
 @app.post("/chat", response_model=ChatResponse)
-async def chat(req: ChatRequest):
-    global request_count, llm
+async def chat(req: InputModel):
+    global request_count, llm, model_ready
     if not model_ready or llm is None:
         raise HTTPException(status_code=503, detail="Model is still loading.")
     request_count += 1
 
-    parts = [f"[SYSTEM] {SYSTEM_PROMPT}"]
-    for h in req.history[-3:]:
-        parts.append(f"[{h.role.upper()}] {h.content}")
-    parts.append(f"[USER] {req.message}")
-    parts.append("[ASSISTANT]")
-    prompt = "\n".join(parts)
+    # Extract prompt string from input
+    prompt = req.input.get("message", "")
+    if not prompt:
+        raise HTTPException(status_code=400, detail="Missing prompt in input.")
 
     out = llm(prompt, max_tokens=MAX_TOKENS, temperature=TEMPERATURE, echo=False)
     return ChatResponse(response=out["choices"][0]["text"].strip())
