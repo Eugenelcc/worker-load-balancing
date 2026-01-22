@@ -10,7 +10,6 @@ RUN ldconfig /usr/local/cuda-12.1/compat/ || true
 # System deps: python, pip, wget, build tools (safe even if wheels are used)
 RUN apt-get update -y && apt-get install -y \
     python3 \
-    python3-dev \
     python3-pip \
     wget \
     git \
