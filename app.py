@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from typing import Optional, List, Literal
 
 import uvicorn
-from fastapi import FastAPI, HTTPException 
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 from llama_cpp import Llama
