@@ -1,5 +1,5 @@
 # CUDA 12.1 image (use devel so build tools exist if any wheel falls back to source)
-FROM nvidia/cuda:12.1.1-devel-ubuntu22.04
+FROM nvidia/cuda:12.1.0-base-ubuntu22.04 
 
 ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /app
